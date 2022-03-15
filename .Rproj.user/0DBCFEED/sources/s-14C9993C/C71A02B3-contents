@@ -1,0 +1,26 @@
+---
+title: "Assignment2 - Eli Lauwers"
+output: 
+  rmarkdown::github_document:
+    number_sections: true
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+library("DBI")
+library("readr")
+library("jsonlite")
+
+knitr::opts_chunk$set(
+  echo = TRUE
+)
+database_creds = read_json("database_creds.json")
+database_creds[["drv"]] = RPostgres::Postgres()
+
+con = do.call(
+  RPostgres::dbConnect, 
+  database_creds
+)
+printlines = 25
+```
