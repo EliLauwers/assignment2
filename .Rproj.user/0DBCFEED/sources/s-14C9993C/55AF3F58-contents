@@ -1,7 +1,0 @@
-{
-  "dbname" : "rollsrobin_databases",
-  "host" : "ddcmstud.ugent.be",
-  "port" : 8088,
-  "user" : "sql_exerciser",
-  "password" : "7UCVuJeLCGcQbk2M"
-}
