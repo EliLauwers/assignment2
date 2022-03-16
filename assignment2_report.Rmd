@@ -61,3 +61,23 @@ HAVING COUNT(DISTINCT r1.email) = 1
 ```
 
 **Answer**: The query returns all `lincense_plates` from cars that were rented by only one distinct person.
+
+# Rewrite
+
+**Question**: Rewrite the following SELECT-query such that it does not use aggregation functions, grouping and having. However, it is important that the result table retrieved by your query equals exactly the result table retrieved by the original query, so try to understand the original query first. Add a file with the name studentcode_firstname_lastname_1_2.sql, in which you substitute ‘studentcode’, ‘firstname’ and ‘lastname’ by resp. your studentcode, firstname and lastname, to the .zip file containing the rewritten SELECT-query.
+
+```{sql connection=con}
+SELECT DISTINCT r.email 
+FROM registration r
+INNER JOIN car c USING (license_plate)
+GROUP BY r.email
+HAVING COUNT(DISTINCT c.enterprisenumber) = 1;
+```
+
+**Argumentation**: Interpretation of the code is as follows: 'Return all distinct email adressess of people who have rented cars at only one distinct enterprise(number)'.
+
+```{sql connection = con, code = readLines("01504786_eli_lauwers_1_2.sql")}
+
+```
+
+

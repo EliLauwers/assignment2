@@ -88,3 +88,111 @@ HAVING COUNT(DISTINCT r1.email) = 1
 
 **Answer**: The query returns all `lincense_plates` from cars that were
 rented by only one distinct person.
+
+# 2 Rewrite
+
+**Question**: Rewrite the following SELECT-query such that it does not
+use aggregation functions, grouping and having. However, it is important
+that the result table retrieved by your query equals exactly the result
+table retrieved by the original query, so try to understand the original
+query first. Add a file with the name
+studentcode\_firstname\_lastname\_1\_2.sql, in which you substitute
+‘studentcode’, ‘firstname’ and ‘lastname’ by resp. your studentcode,
+firstname and lastname, to the .zip file containing the rewritten
+SELECT-query.
+
+``` sql
+SELECT DISTINCT r.email 
+FROM registration r
+INNER JOIN car c USING (license_plate)
+GROUP BY r.email
+HAVING COUNT(DISTINCT c.enterprisenumber) = 1;
+```
+
+<div class="knitsql-table">
+
+| email                         |
+|:------------------------------|
+| <aarya-deakes@gmail.com>      |
+| <abencrew@yahoo.com>          |
+| <abrielle.baversor@gmail.com> |
+| <aiyahuyche@gmail.com>        |
+| <akif@fetherby.nl>            |
+| <alanna.hazell@yahoo.com>     |
+| <alexis_ahearne@yahoo.com>    |
+| <alica-giacomo@hotmail.com>   |
+| <ameira-corby@msn.be>         |
+| <aneesh-nanni@outlook.com>    |
+
+Displaying records 1 - 10
+
+</div>
+
+**Argumentation**: Interpretation of the code is as follows: ‘Return all
+distinct email adressess of people who have rented cars at only one
+distinct enterprise(number)’.
+
+``` sql
+/* 
+  Get all distinct email adresses of people who 
+  have rented cars at only enterprise(number)
+  
+  This documentation starts at the inner queries and moves from inner
+  to outer queries.
+  
+  r1 and r2 are identical to each other.
+  Both are tables where every registration is linked to the 
+  enterprisenumbers given the cars licenseplate
+
+  Next, inner join r1 with r2 on identical emails but different enterpises.
+  The resulting table are pairs of registrations from one person at distinct
+  enterprises.
+  
+  from the paired table, only distinct email adresses are selected. 
+  These email adresses are all people who have registrations for cars
+  from different enterprises.
+  
+  The outer query is rather simple. It returns every distinct emailadress that 
+  is not present in the inner query table. As such, it results in a table 
+  consisting of all registrations of all people who have rented at only one
+  distinct enterprise
+*/
+
+SELECT DISTINCT r.email 
+FROM registration r
+WHERE r.email NOT IN (
+  SELECT DISTINCT r1.email
+  FROM (
+    SELECT *
+    FROM registration r
+    INNER JOIN car c USING(license_plate)
+  ) r1
+  INNER JOIN (
+    SELECT *
+    FROM registration r
+    INNER JOIN car c USING(license_plate)
+  ) r2 ON 
+  r1.email = r2.email AND 
+  r1.enterprisenumber != r2.enterprisenumber
+)
+    
+```
+
+<div class="knitsql-table">
+
+| email                          |
+|:-------------------------------|
+| <millie-janefalkinder@mail.be> |
+| <umer@vassano.com>             |
+| <dwaynedauber@yahoo.com>       |
+| <ileana.ebertz@gmail.com>      |
+| <sruthi-mcmichan@outlook.com>  |
+| <brandan-siret@outlook.com>    |
+| <davi@maidstone.nl>            |
+| <yechiel@sink.com>             |
+| <maria.colthurst@gmail.com>    |
+| <marlowe.camacke@gmail.com>    |
+
+Displaying records 1 - 10
+
+</div>

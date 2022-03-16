@@ -1,8 +1,0 @@
-"0","/* Get all license plates for cars that were only rented by the same person */
-SELECT r1.license_plate, 
-/* Count number of distinct renters */
-COUNT(DISTINCT r1.email) as number_of_distinct_renters
-FROM registration r1
-GROUP BY r1.license_plate
-/* Only return rows where there is one distinct renter */
-HAVING COUNT(DISTINCT r1.email) = 1"
