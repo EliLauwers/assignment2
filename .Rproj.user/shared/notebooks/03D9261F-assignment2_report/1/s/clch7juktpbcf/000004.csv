@@ -1,0 +1,6 @@
+"0","SELECT DISTINCT license_plate
+FROM registration r1
+WHERE NOT EXISTS(SELECT 1
+FROM registration r2
+WHERE r1.email != r2.email
+AND r1.license_plate = r2.license_plate)"
