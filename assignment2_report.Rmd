@@ -141,7 +141,11 @@ WHERE tmp.period_begin <= ALL(
 
 Provide SQL SELECT-queries as solutions to the following exercises related to the rollsrobin database. Each query should be added to a separate .sql file with filename studentcode_firstname_lastname_2_X.sql in which you substitute ‘studentcode’, ‘firstname’ and ‘lastname’ with your studentcode, firstname and lastname respectively, and ‘X’ with the number of the question (1 to 5). Add these .sql files to your final .zip file.
 
-## SOME title
+## passed nights between rentals
 
 Give for each car in the database that was rented (registered) at least once, the number of nights that passed by between the first time that the car was rented (based on period_begin of the first registration, exclusive) and the last time that the car was rented (based on period_begin of the last registration, inclusive). In the result table, we expect two columns with corresponding datatype: license_plate (varchar) and passed_nights (integer). Example: Table 2 shows a list of registrations (only the license plate and begin of the registration period are shown). Given this data, the expected result table is shown in Table 3.
+
+```{sql connection = con, code = readLines("01504786_eli_lauwers_2_1.sql")}
+
+```
 
