@@ -77,7 +77,7 @@ HAVING COUNT(DISTINCT c.enterprisenumber) = 1;
 **Argumentation**: Interpretation of the code is as follows: 'Return all distinct email adressess of people who have rented cars at only one distinct enterprise(number)'. So I'll create some SQL code doing the exact same thing.
 
 ```{sql connection = con, code = readLines("01504786_eli_lauwers_1_2.sql")}
-SOURCE "01504786_eli_lauwers_1_2.sql"
+
 ```
 
 ## Consider the following task for which a SELECT-query should be written.
@@ -86,19 +86,9 @@ SOURCE "01504786_eli_lauwers_1_2.sql"
 
 Only persons who started this (longest) rental period the earliest (based on period_begin) of all people renting for the longest period should be returned by your query. In the result table, only one column email of datatype varchar is expected.
 
-In order to illustrate this task, consider the example data given in Table 1. Given these data, the query should return only one email address, i.e. ‘person1@"ugent.be’. The reason for this is that both person 1 and person 3 had the longest rental period in the database (i.e. 12 days), but the begin date of this rental period of person 1 (i.e. 2018-06-12) was earlier than the begin date of this rental period of person 3 (i.e. 2020-02-14).
-
-|     **email**    | **period_begin** | **period_end** | **# days** |
-|:----------------:|:----------------:|:--------------:|:----------:|
-| person1@ugent.be | 2018-06-12       | 2018-06-23     | 12         |
-| person1@ugent.be | 2017-06-27       | 2017-06-28     | 2          |
-| person2@ugent.be | 2018-05-03       | 2018-05-04     | 2          |
-| person2@ugent.be | 2019-12-15       | 2020-12-19     | 5          |
-| person3@ugent.be | 2020-02-14       | 2020-02-25     | 12         |
-
 Now have a look at the following SELECT-query.
 
-```{sql connection = con, code = readLines("01504786_eli_lauwers_1_2.sql")}
+```{sql connection = con, eval=F}
 SELECT DISTINCT email 
 FROM registration 
 INNER JOIN person USING (email)
@@ -143,9 +133,22 @@ Provide SQL SELECT-queries as solutions to the following exercises related to th
 
 ## passed nights between rentals
 
-Give for each car in the database that was rented (registered) at least once, the number of nights that passed by between the first time that the car was rented (based on period_begin of the first registration, exclusive) and the last time that the car was rented (based on period_begin of the last registration, inclusive). In the result table, we expect two columns with corresponding datatype: license_plate (varchar) and passed_nights (integer). Example: Table 2 shows a list of registrations (only the license plate and begin of the registration period are shown). Given this data, the expected result table is shown in Table 3.
+**Question**: Give for each car in the database that was rented (registered) at least once, the number of nights that passed by between the first time that the car was rented (based on period_begin of the first registration, exclusive) and the last time that the car was rented (based on period_begin of the last registration, inclusive). In the result table, we expect two columns with corresponding datatype: license_plate (varchar) and passed_nights (integer). 
+
+**Answer**:
 
 ```{sql connection = con, code = readLines("01504786_eli_lauwers_2_1.sql")}
 
 ```
 
+## Employee with most rents
+
+**Question**: Give the employee who rented the highest number of unique cars (so, not the employee that did the highest number of unique car rentals). In the result table, we expect one column with name email and datatype varchar. Make sure that your query takes into account ex aequos.
+
+```{sql connection = con, code = readLines("01504786_eli_lauwers_2_2.sql")}
+
+```
+
+## Employee longest rental during his contract
+
+**Question**: Give, for each car brand (so not car model), the total number of times that an employee rented a car of this brand himself/herself during his/her contract at the same company that owns the rented car (i.e. registration.period_begin should be between contract.period_begin and contract.period_end, boundaries inclusive). In the result table, we expect two columns with corresponding datatype: brand (varchar) and amount (integer). Also include brands that are persisted in the database and for which no car rental meets the requirements, with an amount of 0. Sort the results first on amount (numerically descending) and then on brand (alphabetically ascending).

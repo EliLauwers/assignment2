@@ -210,88 +210,17 @@ Only persons who started this (longest) rental period the earliest
 should be returned by your query. In the result table, only one column
 email of datatype varchar is expected.
 
-In order to illustrate this task, consider the example data given in
-Table 1. Given these data, the query should return only one email
-address, i.e. ‘<person1@%22ugent.be>’. The reason for this is that both
-person 1 and person 3 had the longest rental period in the database
-(i.e. 12 days), but the begin date of this rental period of person 1
-(i.e. 2018-06-12) was earlier than the begin date of this rental period
-of person 3 (i.e. 2020-02-14).
-
-|     **email**      | **period\_begin** | **period\_end** | **\# days** |
-|:------------------:|:-----------------:|:---------------:|:-----------:|
-| <person1@ugent.be> |    2018-06-12     |   2018-06-23    |     12      |
-| <person1@ugent.be> |    2017-06-27     |   2017-06-28    |      2      |
-| <person2@ugent.be> |    2018-05-03     |   2018-05-04    |      2      |
-| <person2@ugent.be> |    2019-12-15     |   2020-12-19    |      5      |
-| <person3@ugent.be> |    2020-02-14     |   2020-02-25    |     12      |
-
 Now have a look at the following SELECT-query.
 
 ``` sql
-/* 
-  Get all distinct email adresses of people who 
-  have rented cars at only enterprise(number)
-  
-  This documentation starts at the inner queries and moves from inner
-  to outer queries.
-  
-  r1 and r2 are identical to each other.
-  Both are tables where every registration is linked to the 
-  enterprisenumbers given the cars licenseplate
-
-  Next, inner join r1 with r2 on identical emails but different enterpises.
-  The resulting table are pairs of registrations from one person at distinct
-  enterprises.
-  
-  from the paired table, only distinct email adresses are selected. 
-  These email adresses are all people who have registrations for cars
-  from different enterprises.
-  
-  The outer query is rather simple. It returns every distinct emailadress that 
-  is not present in the inner query table. As such, it results in a table 
-  consisting of all registrations of all people who have rented at only one
-  distinct enterprise
-*/
-
-SELECT DISTINCT r.email 
-FROM registration r
-WHERE r.email NOT IN (
-  SELECT DISTINCT r1.email
-  FROM (
-    SELECT *
-    FROM registration r
-    INNER JOIN car c USING(license_plate)
-  ) r1
-  INNER JOIN (
-    SELECT *
-    FROM registration r
-    INNER JOIN car c USING(license_plate)
-  ) r2 ON 
-  r1.email = r2.email AND 
-  r1.enterprisenumber != r2.enterprisenumber
-)
-    
+SELECT DISTINCT email 
+FROM registration 
+INNER JOIN person USING (email)
+WHERE period_end - period_begin >= ALL (
+    SELECT period_end - period_begin FROM registration
+  )
+AND period_begin <= ALL (SELECT period_begin FROM registration);
 ```
-
-<div class="knitsql-table">
-
-| email                          |
-|:-------------------------------|
-| <millie-janefalkinder@mail.be> |
-| <umer@vassano.com>             |
-| <dwaynedauber@yahoo.com>       |
-| <ileana.ebertz@gmail.com>      |
-| <sruthi-mcmichan@outlook.com>  |
-| <brandan-siret@outlook.com>    |
-| <davi@maidstone.nl>            |
-| <yechiel@sink.com>             |
-| <maria.colthurst@gmail.com>    |
-| <marlowe.camacke@gmail.com>    |
-
-Displaying records 1 - 10
-
-</div>
 
 Does this query solve the task that was described above in all possible
 situations? If not, explain in your own words what is wrong with the
@@ -354,51 +283,85 @@ studentcode\_firstname\_lastname\_2\_X.sql in which you substitute
 firstname and lastname respectively, and ‘X’ with the number of the
 question (1 to 5). Add these .sql files to your final .zip file.
 
-## 2.1 SOME title
+## 2.1 passed nights between rentals
 
-Give for each car in the database that was rented (registered) at least
-once, the number of nights that passed by between the first time that
-the car was rented (based on period\_begin of the first registration,
-exclusive) and the last time that the car was rented (based on
-period\_begin of the last registration, inclusive). In the result table,
-we expect two columns with corresponding datatype: license\_plate
-(varchar) and passed\_nights (integer). Example: Table 2 shows a list of
-registrations (only the license plate and begin of the registration
-period are shown). Given this data, the expected result table is shown
-in Table 3.
+**Question**: Give for each car in the database that was rented
+(registered) at least once, the number of nights that passed by between
+the first time that the car was rented (based on period\_begin of the
+first registration, exclusive) and the last time that the car was rented
+(based on period\_begin of the last registration, inclusive). In the
+result table, we expect two columns with corresponding datatype:
+license\_plate (varchar) and passed\_nights (integer).
+
+**Answer**:
 
 ``` sql
 SELECT r.license_plate, 
-MIN(r.period_begin), 
-MAX(r.period_end),
-MAX(r.period_end) - MIN(r.period_begin)+1 days
+MAX(r.period_begin) - MIN(r.period_begin) passed_nights
 FROM registration r
-WHERE r.license_plate IN (
-  /* Get all more than once registered cars */
-    SELECT r.license_plate
-  FROM registration r
-  GROUP BY (license_plate)
-  HAVING COUNT(*) > 1
-)
 GROUP BY r.license_plate
-ORDER BY days asc
 ```
 
 <div class="knitsql-table">
 
-| license\_plate | min        | max        | days |
-|:---------------|:-----------|:-----------|-----:|
-| 1-PMQ-963      | 2018-04-23 | 2018-04-28 |    6 |
-| 1-HLM-435      | 2017-12-06 | 2017-12-20 |   15 |
-| 1-ZLX-079      | 2017-08-23 | 2017-10-26 |   65 |
-| 1-SYR-442      | 2017-10-10 | 2018-01-08 |   91 |
-| 1-SBA-790      | 2018-09-18 | 2018-12-17 |   91 |
-| 1-KLM-122      | 2018-02-15 | 2018-05-16 |   91 |
-| 1-VBO-366      | 2018-03-20 | 2018-06-18 |   91 |
-| 1-VKL-527      | 2017-05-08 | 2017-08-18 |  103 |
-| 1-ABD-789      | 2018-01-17 | 2018-05-19 |  123 |
-| 1-POI-917      | 2017-06-08 | 2017-11-18 |  164 |
+| license\_plate | passed\_nights |
+|:---------------|---------------:|
+| 1-JRM-104      |            518 |
+| 1-XQD-366      |            711 |
+| 1-DYC-242      |            698 |
+| 1-GJJ-808      |            415 |
+| 1-FFL-548      |            241 |
+| 1-BBA-267      |            663 |
+| 1-ABD-789      |            118 |
+| 1-CRI-027      |            522 |
+| 1-OBT-368      |            542 |
+| 1-VTH-870      |            308 |
 
 Displaying records 1 - 10
 
 </div>
+
+## 2.2 Employee with most rents
+
+**Question**: Give the employee who rented the highest number of unique
+cars (so, not the employee that did the highest number of unique car
+rentals). In the result table, we expect one column with name email and
+datatype varchar. Make sure that your query takes into account ex
+aequos.
+
+``` sql
+/* Subquery: for every employee, get all distinct rented cars */
+SELECT r.email
+FROM registration r
+INNER JOIN employee e USING(email)
+GROUP BY r.email
+HAVING COUNT(DISTINCT r.license_plate) >= ALL(
+    SELECT COUNT(DISTINCT r.license_plate)
+    FROM registration r
+    INNER JOIN employee e USING(email)
+    GROUP BY r.email
+)
+```
+
+<div class="knitsql-table">
+
+| email                          |
+|:-------------------------------|
+| <vrinda.greenhalf@outlook.com> |
+
+1 records
+
+</div>
+
+## 2.3 Employee longest rental during his contract
+
+**Question**: Give, for each car brand (so not car model), the total
+number of times that an employee rented a car of this brand
+himself/herself during his/her contract at the same company that owns
+the rented car (i.e. registration.period\_begin should be between
+contract.period\_begin and contract.period\_end, boundaries inclusive).
+In the result table, we expect two columns with corresponding datatype:
+brand (varchar) and amount (integer). Also include brands that are
+persisted in the database and for which no car rental meets the
+requirements, with an amount of 0. Sort the results first on amount
+(numerically descending) and then on brand (alphabetically ascending).
