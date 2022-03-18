@@ -23,21 +23,22 @@
   distinct enterprise
 */
 
-SELECT DISTINCT r.email 
-FROM registration r
-WHERE r.email NOT IN (
-  SELECT DISTINCT r1.email
-  FROM (
-  	SELECT *
-  	FROM registration r
-  	INNER JOIN car c USING(license_plate)
-  ) r1
-  INNER JOIN (
-  	SELECT *
-  	FROM registration r
-  	INNER JOIN car c USING(license_plate)
-  ) r2 ON 
-  r1.email = r2.email AND 
-  r1.enterprisenumber != r2.enterprisenumber
+
+SELECT DISTINCT r.email  
+FROM registration r 
+WHERE r.email NOT IN ( 
+        /* All email adresses of people who have registrations at different enterprises */
+        SELECT DISTINCT r1.email
+        FROM ( 
+            SELECT *    
+            FROM registration r    
+            INNER JOIN car c USING(license_plate)
+        ) r1 -- r1 => link a registration to a cars owning enterprise
+        INNER JOIN (
+                SELECT *
+                FROM registration r
+                INNER JOIN car c USING(license_plate)
+        ) r2 -- Same as r2
+        ON r1.email = r2.email 
+        AND r1.enterprisenumber != r2.enterprisenumber 
 )
-	

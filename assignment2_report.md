@@ -8,10 +8,12 @@ Assignment2 - Eli Lauwers
 ``` sql
 SELECT DISTINCT license_plate
 FROM registration r1
-WHERE NOT EXISTS(SELECT 1
-FROM registration r2
-WHERE r1.email != r2.email
-AND r1.license_plate = r2.license_plate)
+WHERE NOT EXISTS(
+  SELECT 1
+  FROM registration r2
+  WHERE r1.email != r2.email
+  AND r1.license_plate = r2.license_plate
+)
 ```
 
 <div class="knitsql-table">
@@ -64,12 +66,10 @@ or provides extra evidence - for the hypothesis.
 ``` sql
 /* Get all license plates for cars that were only rented by the same person */
 SELECT r1.license_plate, 
-/* Count number of distinct renters */
-COUNT(DISTINCT r1.email) as number_of_distinct_renters
+  COUNT(DISTINCT r1.email) number_of_distinct_renters -- Count number of distinct renters
 FROM registration r1
 GROUP BY r1.license_plate
-/* Only return rows where there is one distinct renter */
-HAVING COUNT(DISTINCT r1.email) = 1
+HAVING COUNT(DISTINCT r1.email) = 1 --Only return rows where there is one distinct renter
 ```
 
 <div class="knitsql-table">
@@ -159,24 +159,25 @@ exact same thing.
   distinct enterprise
 */
 
-SELECT DISTINCT r.email 
-FROM registration r
-WHERE r.email NOT IN (
-  SELECT DISTINCT r1.email
-  FROM (
-    SELECT *
-    FROM registration r
-    INNER JOIN car c USING(license_plate)
-  ) r1
-  INNER JOIN (
-    SELECT *
-    FROM registration r
-    INNER JOIN car c USING(license_plate)
-  ) r2 ON 
-  r1.email = r2.email AND 
-  r1.enterprisenumber != r2.enterprisenumber
+
+SELECT DISTINCT r.email  
+FROM registration r 
+WHERE r.email NOT IN ( 
+        /* All email adresses of people who have registrations at different enterprises */
+        SELECT DISTINCT r1.email
+        FROM ( 
+            SELECT *    
+            FROM registration r    
+            INNER JOIN car c USING(license_plate)
+        ) r1 -- r1 => link a registration to a cars owning enterprise
+        INNER JOIN (
+                SELECT *
+                FROM registration r
+                INNER JOIN car c USING(license_plate)
+        ) r2 -- Same as r2
+        ON r1.email = r2.email 
+        AND r1.enterprisenumber != r2.enterprisenumber 
 )
-    
 ```
 
 <div class="knitsql-table">
@@ -242,22 +243,29 @@ I would advise altering the query by integrating a subquery.
 -   in the outer query, return the earliest starter from the subquery.
 
 ``` sql
+/*
+  From the people who rented a car for the longest time in the db, 
+  Get the email adres of the person(s) who started their rental on the
+  earliest date
+  
+  First, get all rentals that where the longest in the database
+  Then, find the earliest date in that subtable
+  
+*/
 SELECT DISTINCT tmp.email
-FROM (
-  /* Subquery: get the rows with maximum rental period */
+FROM ( -- Subquery: get the rows with maximum rental period
     SELECT *
     FROM registration r
-  WHERE r.period_end - r.period_begin >= ALL(
+    WHERE r.period_end - r.period_begin >= ALL(
     SELECT r.period_end - r.period_begin FROM registration r
   )
 ) tmp
-WHERE tmp.period_begin <= ALL(
-  /* Subquery: get the rows with maximum rental period */
+WHERE tmp.period_begin <= ALL( --Subquery: get the rows with maximum rental period
     SELECT r.period_begin
-  FROM registration r
-  WHERE r.period_end - r.period_begin >= ALL(
-    SELECT r.period_end - r.period_begin FROM registration r
-  )
+    FROM registration r
+    WHERE r.period_end - r.period_begin >= ALL(
+      SELECT r.period_end - r.period_begin FROM registration r
+    )
 )
 ```
 
@@ -296,9 +304,9 @@ license\_plate (varchar) and passed\_nights (integer).
 **Answer**:
 
 ``` sql
-SELECT r.license_plate, 
-MAX(r.period_begin) - MIN(r.period_begin) passed_nights
-FROM registration r
+SELECT r.license_plate,
+    MAX(r.period_begin) - MIN(r.period_begin) passed_nights 
+FROM registration r 
 GROUP BY r.license_plate
 ```
 
@@ -330,17 +338,16 @@ datatype varchar. Make sure that your query takes into account ex
 aequos.
 
 ``` sql
-/* Subquery: for every employee, get all distinct rented cars */
-SELECT r.email
-FROM registration r
-INNER JOIN employee e USING(email)
-GROUP BY r.email
+SELECT r.email 
+FROM registration r 
+INNER JOIN employee e USING(email) 
+GROUP BY r.email 
 HAVING COUNT(DISTINCT r.license_plate) >= ALL(
-    SELECT COUNT(DISTINCT r.license_plate)
-    FROM registration r
-    INNER JOIN employee e USING(email)
-    GROUP BY r.email
-)
+  SELECT COUNT(DISTINCT r.license_plate)  
+  FROM registration r  
+  INNER JOIN employee e USING(email)  
+  GROUP BY r.email 
+) 
 ```
 
 <div class="knitsql-table">
@@ -365,3 +372,205 @@ brand (varchar) and amount (integer). Also include brands that are
 persisted in the database and for which no car rental meets the
 requirements, with an amount of 0. Sort the results first on amount
 (numerically descending) and then on brand (alphabetically ascending).
+
+**Answer**:
+
+``` sql
+SELECT brand, COALESCE(tmp.amount, 0) amount
+FROM (
+  SELECT brand, COUNT(*) amount
+  FROM (
+    SELECT *
+      FROM registration r
+    INNER JOIN employee e USING(email)
+    INNER JOIN contract con USING(employeenumber)
+    INNER JOIN car c USING(license_plate)
+    WHERE r.period_begin >= con.period_begin
+    AND  r.period_begin <= con.period_end
+    AND con.enterprisenumber = c.enterprisenumber
+  ) tmp
+  GROUP BY brand
+) tmp
+RIGHT JOIN (SELECT DISTINCT c.brand FROM car c) c USING(brand)
+ORDER BY amount desc, brand asc
+```
+
+<div class="knitsql-table">
+
+| brand         | amount |
+|:--------------|-------:|
+| Ford          |      3 |
+| Kia           |      2 |
+| Peugeot       |      2 |
+| Renault       |      2 |
+| BMW           |      1 |
+| Citroën       |      1 |
+| Mercedes-Benz |      1 |
+| Mini          |      1 |
+| Opel          |      1 |
+| Audi          |      0 |
+
+Displaying records 1 - 10
+
+</div>
+
+## 2.4 percentage employees and percentage cars
+
+**Question**: Calculate, for each email domain used by an employee, two
+different numerical values, which are
+
+-   the percentage share of unique employees using this email domain on
+    the total number of unique persons (i.e. employees and
+    non-employees) using this email domain (column
+    percentage\_employees), and
+-   the percentage share of unique cars rented by employees using this
+    email domain on the total number of unique cars rented by persons
+    (i.e. employees and non-employees) using this email domain (column
+    percentage\_cars).
+
+You may assume that domains in an email address start right after the
+‘@’ symbol (and that there is only one ‘@’ symbol in an email address)
+and end right before the final ‘.’ symbol (e.g. gmail, hotmail,. . . ).
+Besides that, you may also assume that all persons did at least one
+registration. So, in the result table, we expect three columns with
+corresponding datatype: email\_domain (varchar), percentage\_employees
+(numeric) and percentage\_cars (numeric). The values in columns
+percentage\_employees and percentage\_cars should be between 0 and 100
+(boundaries inclusive) and should be rounded up to two decimals
+
+**Answer**:
+
+``` sql
+SELECT *
+FROM ( -- subquery, get the percentage of employees relative to all people using an emaildomain
+       /* 
+         First, get the number of people per domain.
+       Then, get the number of employees per domain.
+       Next, divide the number of employees and number of people.
+       The resulting table is the relative frequency of employees per domain
+       */
+       SELECT email_domain, 
+            ROUND(100 * coalesce(amount_employee, 0)::decimal / amount_people, 2) percentage_employees
+       FROM ( -- number of people in with domain
+              SELECT SUBSTRING(p.email, '(?<=@).*(?=\.)') email_domain, 
+                    COUNT(*) amount_people
+              FROM person p
+              GROUP BY SUBSTRING(p.email, '(?<=@).*(?=\.)')
+       ) tmp
+       LEFT JOIN ( -- number of employees with domain
+                   SELECT SUBSTRING(e.email, '(?<=@).*(?=\.)') email_domain, 
+                        COUNT(*) amount_employee
+                   FROM employee e
+                   GROUP BY SUBSTRING(e.email, '(?<=@).*(?=\.)')
+       ) tmp2 USING(email_domain)
+) tmp
+LEFT JOIN (
+    SELECT email_domain, 
+        ROUND(100 * coalesce(rentals_employee, 0)::decimal / rentals_total, 2) percentage_cars
+    FROM ( -- Number of unique cars rented by people using domain
+        SELECT SUBSTRING(p.email, '(?<=@).*(?=\.)') email_domain, 
+            COUNT(DISTINCT r.license_plate) rentals_total
+        FROM registration r
+        INNER JOIN person p USING(email)
+        GROUP BY SUBSTRING(p.email, '(?<=@).*(?=\.)')
+    ) tmp
+    LEFT JOIN ( -- Number of unique cars rented by employees using domain 
+        SELECT SUBSTRING(e.email, '(?<=@).*(?=\.)') email_domain, 
+            COUNT(DISTINCT r.license_plate) rentals_employee
+        FROM registration r
+        INNER JOIN employee e USING(email)
+        GROUP BY SUBSTRING(e.email, '(?<=@).*(?=\.)')
+    ) tmp2 USING(email_domain)
+) tmp2 USING(email_domain)
+WHERE tmp.percentage_employees > 0
+```
+
+<div class="knitsql-table">
+
+| email\_domain | percentage\_employees | percentage\_cars |
+|:--------------|----------------------:|-----------------:|
+| coulbeck      |                100.00 |           100.00 |
+| fetherby      |                100.00 |           100.00 |
+| gmail         |                 22.97 |            36.94 |
+| hotmail       |                 13.64 |            19.70 |
+| keep          |                100.00 |           100.00 |
+| loughrey      |                100.00 |           100.00 |
+| mail          |                  9.52 |            12.94 |
+| mccane        |                100.00 |           100.00 |
+| mildner       |                100.00 |           100.00 |
+| msn           |                 25.00 |            39.55 |
+
+Displaying records 1 - 10
+
+</div>
+
+## 2.5 Absolute deviation
+
+**Question**: Return the license plate of the car of which the total
+number of times that this car was rented, is the closest to the average
+number of times that a car is rented (computed over all cars present in
+the database). Be aware of the fact that, in order to calculate the
+average, you should also take into account the cars that have never been
+rented before. In the result table, only one column license\_plate of
+datatype varchar is expected. Make sure that your query takes into
+account ex aequos.
+
+**Answer**:
+
+``` sql
+SELECT tmp.license_plate
+FROM (
+    SELECT license_plate, 
+        amts.amount,
+        abs(amts.amount - (avg(amts.amount) OVER())) residual
+    FROM(
+        SELECT c.license_plate,
+            COALESCE(tmp.amount, 0) amount
+        FROM car c 
+        LEFT JOIN (
+            SELECT r.license_plate,
+                COUNT(*) amount
+            FROM registration r
+            GROUP BY(r.license_plate)
+        ) tmp USING(license_plate)
+    ) amts
+) tmp 
+WHERE tmp.residual <= ALL(
+    SELECT MIN(tmp.residual)
+    FROM (
+    SELECT license_plate, 
+        amts.amount,
+        abs(amts.amount - (avg(amts.amount) OVER())) residual
+    FROM(
+        SELECT c.license_plate,
+            COALESCE(tmp.amount, 0) amount
+        FROM car c 
+        LEFT JOIN (
+            SELECT r.license_plate,
+                COUNT(*) amount
+            FROM registration r
+            GROUP BY(r.license_plate)
+        ) tmp USING(license_plate)
+    ) amts
+) tmp 
+)
+```
+
+<div class="knitsql-table">
+
+| license\_plate |
+|:---------------|
+| 1-RYJ-867      |
+| 1-FVO-234      |
+| 1-EXP-282      |
+| 1-YQL-135      |
+| 1-RBT-549      |
+| 1-DDP-931      |
+| 1-LWY-156      |
+| 1-JHX-312      |
+| 1-HXY-484      |
+| 1-FDH-025      |
+
+Displaying records 1 - 10
+
+</div>
