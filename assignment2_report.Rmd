@@ -41,7 +41,7 @@ WHERE NOT EXISTS(
 ```
 **Question**: Describe, in your own words, what this SELECT-query achieves. You should not give the result table of this query or explain this query in technical terms (i.e. we do not expect a literal translation of the operations that are performed in the query), but explain what the semantical outcome is of this query when executed on data that is stored in the rollsrobin database. Provide your answer in a short report.
 
-**Argumentation**: When interpreting SQL-queries with subqueries, I always try to interpret the subquery first. In this case however, the subquery uses the `registration r1` as provided in the subquery.
+**Argumentation**: When interpreting SQL-queries with subqueries, I always try to interpret the subquery first. In this case however, the subquery uses the `registration r1` as provided in the outer query.
 
 The subquery returns all registrations where different `email` adresses where used on the same `license_plate`. In other words, it returns a __subtable__ with cars that have been rented by multiple different people. In the outer query, all `registrations` are checked against that subtable. By using a `NOT EXISTS` clause, the resulting table consists of all registrations where a car was rented by only one person. It can however be that the car in question was rented multiple times. 
 
@@ -55,7 +55,7 @@ In summary, the full query returns all `lincense_plates` from cars that were ind
 
 ```
 
-**Answer**: The query returns all `lincense_plates` from cars that were rented by only one distinct person.
+**Answer**: The query returns all `license_plates` from cars that were rented by only one distinct person.
 
 ## Rewrite
 
@@ -112,21 +112,19 @@ I would advise altering the query by integrating a subquery.
   Then, find the earliest date in that subtable
   
 */
-SELECT DISTINCT tmp.email
-FROM ( -- Subquery: get the rows with maximum rental period
-    SELECT *
-    FROM registration r
-    WHERE r.period_end - r.period_begin >= ALL(
+
+WITH max_rentals as (
+	SELECT *
+  FROM registration r
+  WHERE r.period_end - r.period_begin >= ALL(
     SELECT r.period_end - r.period_begin FROM registration r
   )
-) tmp
-WHERE tmp.period_begin <= ALL( --Subquery: get the rows with maximum rental period
-    SELECT r.period_begin
-    FROM registration r
-    WHERE r.period_end - r.period_begin >= ALL(
-      SELECT r.period_end - r.period_begin FROM registration r
-    )
 )
+
+SELECT DISTINCT mr.email
+FROM max_rentals mr
+WHERE mr.period_begin <= ALL(SELECT mr.period_begin FROM max_rentals mr)
+
 ```
 
 # Advanced SQL

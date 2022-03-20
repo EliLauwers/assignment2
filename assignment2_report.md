@@ -40,7 +40,7 @@ short report.
 
 **Argumentation**: When interpreting SQL-queries with subqueries, I
 always try to interpret the subquery first. In this case however, the
-subquery uses the `registration r1` as provided in the subquery.
+subquery uses the `registration r1` as provided in the outer query.
 
 The subquery returns all registrations where different `email` adresses
 where used on the same `license_plate`. In other words, it returns a
@@ -86,7 +86,7 @@ HAVING COUNT(DISTINCT r1.email) = 1 --Only return rows where there is one distin
 
 </div>
 
-**Answer**: The query returns all `lincense_plates` from cars that were
+**Answer**: The query returns all `license_plates` from cars that were
 rented by only one distinct person.
 
 ## 1.2 Rewrite
@@ -141,11 +141,12 @@ exact same thing.
   This documentation starts at the inner queries and moves from inner
   to outer queries.
   
-  r1 and r2 are identical to each other.
-  Both are tables where every registration is linked to the 
-  enterprisenumbers given the cars licenseplate
+  First, the WITH-statement creates one table that can be reused as a distinct table.
+  The table itself contains all registrations linked to the corresponding
+  owning enterprises.Without the with statement, I would copy paste identical 
+  code two times, which does the same thing.
 
-  Next, inner join r1 with r2 on identical emails but different enterpises.
+  Next, self join the linked table on identical emails but different enterpises.
   The resulting table are pairs of registrations from one person at distinct
   enterprises.
   
@@ -162,21 +163,17 @@ exact same thing.
 
 SELECT DISTINCT r.email  
 FROM registration r 
-WHERE r.email NOT IN ( 
-        /* All email adresses of people who have registrations at different enterprises */
-        SELECT DISTINCT r1.email
-        FROM ( 
-            SELECT *    
-            FROM registration r    
-            INNER JOIN car c USING(license_plate)
-        ) r1 -- r1 => link a registration to a cars owning enterprise
-        INNER JOIN (
-                SELECT *
-                FROM registration r
-                INNER JOIN car c USING(license_plate)
-        ) r2 -- Same as r2
-        ON r1.email = r2.email 
-        AND r1.enterprisenumber != r2.enterprisenumber 
+WHERE r.email NOT IN (
+  /* All email adresses of people who have registrations at different enterprises */
+  WITH linked as (
+    SELECT *    
+    FROM registration r    
+    INNER JOIN car c USING(license_plate)
+  ) 
+    SELECT DISTINCT l1.email
+  FROM linked l1 -- link a registration to a cars owning enterprise
+  INNER JOIN linked l2 ON l1.email = l2.email 
+    AND l1.enterprisenumber != l2.enterprisenumber 
 )
 ```
 
@@ -252,21 +249,18 @@ I would advise altering the query by integrating a subquery.
   Then, find the earliest date in that subtable
   
 */
-SELECT DISTINCT tmp.email
-FROM ( -- Subquery: get the rows with maximum rental period
+
+WITH max_rentals as (
     SELECT *
-    FROM registration r
-    WHERE r.period_end - r.period_begin >= ALL(
+  FROM registration r
+  WHERE r.period_end - r.period_begin >= ALL(
     SELECT r.period_end - r.period_begin FROM registration r
   )
-) tmp
-WHERE tmp.period_begin <= ALL( --Subquery: get the rows with maximum rental period
-    SELECT r.period_begin
-    FROM registration r
-    WHERE r.period_end - r.period_begin >= ALL(
-      SELECT r.period_end - r.period_begin FROM registration r
-    )
 )
+
+SELECT DISTINCT mr.email
+FROM max_rentals mr
+WHERE mr.period_begin <= ALL(SELECT mr.period_begin FROM max_rentals mr)
 ```
 
 <div class="knitsql-table">
@@ -308,6 +302,10 @@ SELECT r.license_plate,
     MAX(r.period_begin) - MIN(r.period_begin) passed_nights 
 FROM registration r 
 GROUP BY r.license_plate
+/* 
+  Excluce vehicles that were only rented once. For those vehicles, there will only be one registered email
+*/
+HAVING COUNT(r.email) > 1
 ```
 
 <div class="knitsql-table">

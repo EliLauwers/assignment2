@@ -5,11 +5,12 @@
   This documentation starts at the inner queries and moves from inner
   to outer queries.
   
-  r1 and r2 are identical to each other.
-  Both are tables where every registration is linked to the 
-  enterprisenumbers given the cars licenseplate
+  First, the WITH-statement creates one table that can be reused as a distinct table.
+  The table itself contains all registrations linked to the corresponding
+  owning enterprises.Without the with statement, I would copy paste identical 
+  code two times, which does the same thing.
 
-  Next, inner join r1 with r2 on identical emails but different enterpises.
+  Next, self join the linked table on identical emails but different enterpises.
   The resulting table are pairs of registrations from one person at distinct
   enterprises.
   
@@ -26,19 +27,15 @@
 
 SELECT DISTINCT r.email  
 FROM registration r 
-WHERE r.email NOT IN ( 
-        /* All email adresses of people who have registrations at different enterprises */
-        SELECT DISTINCT r1.email
-        FROM ( 
-            SELECT *    
-            FROM registration r    
-            INNER JOIN car c USING(license_plate)
-        ) r1 -- r1 => link a registration to a cars owning enterprise
-        INNER JOIN (
-                SELECT *
-                FROM registration r
-                INNER JOIN car c USING(license_plate)
-        ) r2 -- Same as r2
-        ON r1.email = r2.email 
-        AND r1.enterprisenumber != r2.enterprisenumber 
+WHERE r.email NOT IN (
+  /* All email adresses of people who have registrations at different enterprises */
+  WITH linked as (
+    SELECT *    
+    FROM registration r    
+    INNER JOIN car c USING(license_plate)
+  )	
+	SELECT DISTINCT l1.email
+  FROM linked l1 -- link a registration to a cars owning enterprise
+  INNER JOIN linked l2 ON l1.email = l2.email 
+    AND l1.enterprisenumber != l2.enterprisenumber 
 )
