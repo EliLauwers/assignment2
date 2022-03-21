@@ -302,10 +302,7 @@ SELECT r.license_plate,
     MAX(r.period_begin) - MIN(r.period_begin) passed_nights 
 FROM registration r 
 GROUP BY r.license_plate
-/* 
-  Excluce vehicles that were only rented once. For those vehicles, there will only be one registered email
-*/
-HAVING COUNT(r.email) > 1
+HAVING COUNT(r.email) > 1 -- Excluce vehicles that were only rented once
 ```
 
 <div class="knitsql-table">
@@ -376,18 +373,15 @@ requirements, with an amount of 0. Sort the results first on amount
 ``` sql
 SELECT brand, COALESCE(tmp.amount, 0) amount
 FROM (
-  SELECT brand, COUNT(*) amount
-  FROM (
-    SELECT *
-      FROM registration r
+    SELECT brand, COUNT(*) amount
+    FROM registration r
     INNER JOIN employee e USING(email)
     INNER JOIN contract con USING(employeenumber)
     INNER JOIN car c USING(license_plate)
     WHERE r.period_begin >= con.period_begin
     AND  r.period_begin <= con.period_end
     AND con.enterprisenumber = c.enterprisenumber
-  ) tmp
-  GROUP BY brand
+    GROUP BY c.brand
 ) tmp
 RIGHT JOIN (SELECT DISTINCT c.brand FROM car c) c USING(brand)
 ORDER BY amount desc, brand asc
@@ -516,41 +510,26 @@ account ex aequos.
 **Answer**:
 
 ``` sql
-SELECT tmp.license_plate
-FROM (
-    SELECT license_plate, 
-        amts.amount,
-        abs(amts.amount - (avg(amts.amount) OVER())) residual
-    FROM(
-        SELECT c.license_plate,
-            COALESCE(tmp.amount, 0) amount
-        FROM car c 
-        LEFT JOIN (
-            SELECT r.license_plate,
-                COUNT(*) amount
-            FROM registration r
-            GROUP BY(r.license_plate)
-        ) tmp USING(license_plate)
-    ) amts
-) tmp 
-WHERE tmp.residual <= ALL(
-    SELECT MIN(tmp.residual)
-    FROM (
-    SELECT license_plate, 
-        amts.amount,
-        abs(amts.amount - (avg(amts.amount) OVER())) residual
-    FROM(
-        SELECT c.license_plate,
-            COALESCE(tmp.amount, 0) amount
-        FROM car c 
-        LEFT JOIN (
-            SELECT r.license_plate,
-                COUNT(*) amount
-            FROM registration r
-            GROUP BY(r.license_plate)
-        ) tmp USING(license_plate)
-    ) amts
-) tmp 
+WITH amounts as (
+  SELECT license_plate, 
+    amts.amount,
+    abs(amts.amount - (avg(amts.amount) OVER())) residual
+  FROM (
+    SELECT c.license_plate,
+    COALESCE(tmp.amount, 0) amount
+    FROM car c 
+    LEFT JOIN (
+      SELECT r.license_plate,
+      COUNT(*) amount
+      FROM registration r
+      GROUP BY(r.license_plate)
+    ) tmp USING(license_plate)
+  ) amts
+)
+SELECT amts.license_plate
+FROM  amounts amts
+WHERE amts.residual <= ALL(
+  SELECT MIN(amts.residual) FROM amounts amts
 )
 ```
 
