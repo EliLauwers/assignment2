@@ -25,15 +25,15 @@
 */
 
 
+WITH linked as (
+    SELECT *    
+    FROM registration r    
+    INNER JOIN car c USING(license_plate)
+)	
 SELECT DISTINCT r.email  
 FROM registration r 
 WHERE r.email NOT IN (
   /* All email adresses of people who have registrations at different enterprises */
-  WITH linked as (
-    SELECT *    
-    FROM registration r    
-    INNER JOIN car c USING(license_plate)
-  )	
 	SELECT DISTINCT l1.email
   FROM linked l1 -- link a registration to a cars owning enterprise
   INNER JOIN linked l2 ON l1.email = l2.email 
