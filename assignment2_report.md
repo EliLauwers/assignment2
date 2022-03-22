@@ -135,15 +135,9 @@ exact same thing.
 
 ``` sql
 /* 
-  Get all distinct email adresses of people who 
-  have rented cars at only enterprise(number)
-  
-  This documentation starts at the inner queries and moves from inner
-  to outer queries.
-  
   First, the WITH-statement creates one table that can be reused as a distinct table.
   The table itself contains all registrations linked to the corresponding
-  owning enterprises.Without the with statement, I would copy paste identical 
+  owning enterprises. Without the with statement, I would copy paste identical 
   code two times, which does the same thing.
 
   Next, self join the linked table on identical emails but different enterpises.
@@ -156,7 +150,7 @@ exact same thing.
   
   The outer query is rather simple. It returns every distinct emailadress that 
   is not present in the inner query table. As such, it results in a table 
-  consisting of all registrations of all people who have rented at only one
+  consisting of all distinct email adresses of all people who have rented at only one
   distinct enterprise
 */
 
@@ -171,8 +165,8 @@ FROM registration r
 WHERE r.email NOT IN (
   /* All email adresses of people who have registrations at different enterprises */
     SELECT DISTINCT l1.email
-  FROM linked l1 -- link a registration to a cars owning enterprise
-  INNER JOIN linked l2 ON l1.email = l2.email 
+    FROM linked l1 -- link a registration to a cars owning enterprise
+    INNER JOIN linked l2 ON l1.email = l2.email 
     AND l1.enterprisenumber != l2.enterprisenumber 
 )
 ```
@@ -335,8 +329,8 @@ aequos.
 ``` sql
 SELECT r.email 
 FROM registration r 
-INNER JOIN employee e USING(email) 
-GROUP BY r.email 
+INNER JOIN employee e USING(email) -- After inner join, only employees are present
+GROUP BY r.email
 HAVING COUNT(DISTINCT r.license_plate) >= ALL(
   SELECT COUNT(DISTINCT r.license_plate)  
   FROM registration r  
@@ -371,9 +365,11 @@ requirements, with an amount of 0. Sort the results first on amount
 **Answer**:
 
 ``` sql
-SELECT brand, COALESCE(tmp.amount, 0) amount
+SELECT brand, 
+  COALESCE(tmp.amount, 0) amount
 FROM (
-    SELECT brand, COUNT(*) amount
+    SELECT brand, 
+      COUNT(*) amount
     FROM registration r
     INNER JOIN employee e USING(email)
     INNER JOIN contract con USING(employeenumber)
@@ -510,17 +506,21 @@ account ex aequos.
 **Answer**:
 
 ``` sql
+/*
+  a table with a license_plate, a number of times it was rented,
+  and the absolute deviation from the mean amount of rentals
+*/
 WITH amounts as (
   SELECT license_plate, 
     amts.amount,
     abs(amts.amount - (avg(amts.amount) OVER())) residual
-  FROM (
+  FROM ( -- get a table of every car with the amount of times it was rented
     SELECT c.license_plate,
-    COALESCE(tmp.amount, 0) amount
+      COALESCE(tmp.amount, 0) amount
     FROM car c 
-    LEFT JOIN (
+    LEFT JOIN ( -- For every car, add the amount the car was rented
       SELECT r.license_plate,
-      COUNT(*) amount
+        COUNT(*) amount
       FROM registration r
       GROUP BY(r.license_plate)
     ) tmp USING(license_plate)
@@ -528,7 +528,7 @@ WITH amounts as (
 )
 SELECT amts.license_plate
 FROM  amounts amts
-WHERE amts.residual <= ALL(
+WHERE amts.residual <= ALL( -- get the least residual from the residual tables
   SELECT MIN(amts.residual) FROM amounts amts
 )
 ```

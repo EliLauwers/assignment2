@@ -1,6 +1,8 @@
-SELECT brand, COALESCE(tmp.amount, 0) amount
+SELECT brand, 
+  COALESCE(tmp.amount, 0) amount
 FROM (
-	SELECT brand, COUNT(*) amount
+	SELECT brand, 
+	  COUNT(*) amount
 	FROM registration r
 	INNER JOIN employee e USING(email)
 	INNER JOIN contract con USING(employeenumber)
